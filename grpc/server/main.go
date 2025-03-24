@@ -39,8 +39,8 @@ func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloRe
 	// 模拟处理时间
 	time.Sleep(50 * time.Millisecond)
 
-	log.Printf("收到: %v", in.GetName())
-	return &pb.HelloReply{Message: "你好 " + in.GetName()}, nil
+	log.Printf("Received: %v", in.GetName())
+	return &pb.HelloReply{Message: "Hello " + in.GetName()}, nil
 }
 
 // 初始化 OpenTelemetry
@@ -60,7 +60,7 @@ func initTracer() func() {
 		}),
 	)
 	if err != nil {
-		log.Fatalf("创建 OTLP exporter 失败: %v", err)
+		log.Fatalf("Failed to create OTLP exporter: %v", err)
 	}
 
 	// 创建资源
@@ -72,7 +72,7 @@ func initTracer() func() {
 		),
 	)
 	if err != nil {
-		log.Fatalf("创建资源失败: %v", err)
+		log.Fatalf("Failed to create resource: %v", err)
 	}
 
 	// 创建 trace provider
@@ -86,7 +86,7 @@ func initTracer() func() {
 
 	return func() {
 		if err := tp.Shutdown(ctx); err != nil {
-			log.Fatalf("关闭 tracer provider 失败: %v", err)
+			log.Fatalf("Failed to shutdown tracer provider: %v", err)
 		}
 	}
 }
@@ -98,7 +98,7 @@ func main() {
 
 	lis, err := net.Listen("tcp", port)
 	if err != nil {
-		log.Fatalf("监听失败: %v", err)
+		log.Fatalf("Failed to listen: %v", err)
 	}
 
 	// 创建 gRPC 服务器并添加 OpenTelemetry 拦截器
@@ -108,8 +108,8 @@ func main() {
 	)
 
 	pb.RegisterGreeterServer(s, &server{})
-	log.Printf("服务器启动在 %v", port)
+	log.Printf("Server started on %v", port)
 	if err := s.Serve(lis); err != nil {
-		log.Fatalf("服务失败: %v", err)
+		log.Fatalf("Failed to serve: %v", err)
 	}
 }

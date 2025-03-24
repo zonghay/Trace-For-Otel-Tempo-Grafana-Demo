@@ -21,7 +21,7 @@ import (
 
 const (
 	address     = "localhost:50051"
-	defaultName = "世界"
+	defaultName = "world"
 )
 
 // 初始化 OpenTelemetry
@@ -34,7 +34,7 @@ func initTracer() func() {
 		otlptracegrpc.WithEndpoint("localhost:4317"),
 	)
 	if err != nil {
-		log.Fatalf("创建 OTLP exporter 失败: %v", err)
+		log.Fatalf("create OTLP exporter fail: %v", err)
 	}
 
 	// 创建资源
@@ -45,7 +45,7 @@ func initTracer() func() {
 		),
 	)
 	if err != nil {
-		log.Fatalf("创建资源失败: %v", err)
+		log.Fatalf("create resource fail: %v", err)
 	}
 
 	// 创建 trace provider
@@ -59,7 +59,7 @@ func initTracer() func() {
 
 	return func() {
 		if err := tp.Shutdown(ctx); err != nil {
-			log.Fatalf("关闭 tracer provider 失败: %v", err)
+			log.Fatalf("close tracer provider fail: %v", err)
 		}
 	}
 }
@@ -76,7 +76,7 @@ func main() {
 		grpc.WithStreamInterceptor(otelgrpc.StreamClientInterceptor()),
 	)
 	if err != nil {
-		log.Fatalf("连接失败: %v", err)
+		log.Fatalf("connect failed: %v", err)
 	}
 	defer conn.Close()
 	c := pb.NewGreeterClient(conn)
@@ -99,15 +99,9 @@ func main() {
 	// 调用 SayHello
 	r, err := c.SayHello(ctx, &pb.HelloRequest{Name: name})
 	if err != nil {
-		log.Fatalf("调用失败: %v", err)
+		log.Fatalf("call grpc fail: %v", err)
 	}
-	log.Printf("响应: %s", r.GetMessage())
-
-	r, err = c.SayHello(ctx, &pb.HelloRequest{Name: name})
-	if err != nil {
-		log.Fatalf("调用失败: %v", err)
-	}
-	log.Printf("响应: %s", r.GetMessage())
+	log.Printf("response: %s", r.GetMessage())
 
 	// 等待一下确保追踪数据被发送
 	time.Sleep(100 * time.Millisecond)
