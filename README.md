@@ -9,3 +9,5 @@
 4. 客户端请求```go run grpc/client/main.go Jeff```
 
 ![alt text](trace_detail.png)
+
+ 建议配合文章一起使用[OpenTelemetry+Tempo+Grafana搭建分布式Trace监控](https://zonghay.github.io/archives/opentelemetry+tempo+grafana%E6%90%AD%E5%BB%BA%E5%88%86%E5%B8%83%E5%BC%8Ftrace%E7%9B%91%E6%8E%A7/)
