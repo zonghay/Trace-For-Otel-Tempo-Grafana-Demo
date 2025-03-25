@@ -15,6 +15,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 )
 
@@ -29,17 +30,77 @@ type server struct {
 
 // SayHello 实现
 func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloReply, error) {
-	// 获取当前的 span
-	ctx, span := otel.Tracer("server").Start(ctx, "SayHello")
-	defer span.End()
-
+	// 获取当前的 span (Span A - 服务端接收到的根 span)
+	ctx, spanA := otel.Tracer("server").Start(ctx, "SayHello")
+	defer spanA.End()
 	// 添加一些属性到 span
-	span.SetAttributes(attribute.String("request.name", in.GetName()))
+	spanA.SetAttributes(attribute.String("request.name", in.GetName()))
+	spanA.AddEvent("Processing request", trace.WithAttributes(attribute.String("event.type", "process_start")))
+
+	// 创建 Span B (ChildOf Span A)
+	_, spanB := otel.Tracer("server").Start(ctx, "ProcessMetadata")
+	spanB.SetAttributes(attribute.String("span.type", "parallel_process"))
+	// 模拟一些处理时间
+	time.Sleep(20 * time.Millisecond)
+	spanB.End()
+
+	// 创建 Span C (ChildOf Span A)
+	ctxC, spanC := otel.Tracer("server").Start(ctx, "BusinessLogic")
+	spanC.SetAttributes(attribute.String("span.type", "main_process"))
+
+	// 模拟 DB 请求行为 (Span D - ChildOf Span C)
+	_, spanD := otel.Tracer("server").Start(ctxC, "DatabaseQuery")
+	spanD.SetAttributes(
+		attribute.String("db.system", "mysql"),
+		attribute.String("db.operation", "select"),
+		attribute.String("db.statement", "SELECT * FROM users WHERE name = ?"),
+	)
+
+	// 模拟数据库查询时间
+	time.Sleep(30 * time.Millisecond)
+	spanD.AddEvent("Database query completed", trace.WithAttributes(attribute.Int("db.rows_affected", 1)))
+	spanD.End()
+
+	// 模拟数据处理 (Span E - ChildOf Span C)
+	_, spanE := otel.Tracer("server").Start(ctxC, "ProcessData")
+	spanE.SetAttributes(attribute.String("process.type", "data_transformation"))
 
 	// 模拟处理时间
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(25 * time.Millisecond)
+	spanE.AddEvent("Data processing completed")
 
+	// 在 Span E 结束前，创建一个 FollowFrom 类型的 Span F (使用同一个 Trace ID)
+	spanEContext := spanE.SpanContext()
+	// 结束 Span E
+	spanE.End()
+	// 结束 Span C
+	spanC.End()
+
+	// 创建 Span F，保持在同一个 Trace 中
+	ctxF, spanF := otel.Tracer("server").Start(
+		ctx, // 使用原始上下文保持在同一个 Trace 中
+		"AsyncPostProcess",
+		trace.WithLinks(trace.Link{
+			SpanContext: spanEContext,
+			Attributes:  []attribute.KeyValue{attribute.String("link.relation", "follows_from")},
+		}),
+	)
+
+	// 模拟异步后处理操作
+	go func(ctx context.Context, span trace.Span) {
+		defer span.End()
+
+		// 模拟异步处理时间
+		time.Sleep(40 * time.Millisecond)
+		span.AddEvent("Async processing completed")
+
+		log.Printf("Async processing for request '%s' completed", in.GetName())
+	}(ctxF, spanF)
+
+	// 记录请求处理完成
 	log.Printf("Received: %v", in.GetName())
+	spanA.AddEvent("Request processed successfully")
+
 	return &pb.HelloReply{Message: "Hello " + in.GetName()}, nil
 }
 
