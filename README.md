@@ -7,3 +7,5 @@
 2. 在Grafana内Import仓库里提供的grafana_template.json文件自动生成链路追踪的DashBoard
 3. 服务端运行```go run grpc/server/main.go```
 4. 客户端请求```go run grpc/client/main.go Jeff```
+
+![alt text](trace_detail.png)
